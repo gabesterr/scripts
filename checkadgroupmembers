@@ -1,0 +1,21 @@
+#!/bin/bash
+
+processLine(){
+	line="$@"
+  
+ECHO "${line}" -O
+}
+
+if [ "$1" == "" ]; then
+	group=`whoami`
+else
+   group="$1"
+fi
+
+#use dscl in ineractive mode to find out ADdomain
+ADdomain="All\ Domains"
+DOMAINNAME="yourdomain"
+#userRecord=`dscl localhost -read /Active\ Directory/$DOMAINNAME/All\ Domains/Users/$user distinguishedName`
+#groupRecord=`dscl localhost -read /Active\ Directory/$DOMAINNAME/All\ Domains/Groups/$group distinguishedName | sed 's/dsAttrTypeNative:distinguishedName://'`
+groupRecord=`dscl localhost -read /Active\ Directory/$DOMAINNAME/All\ Domains/Groups/$group GroupMembership | sed 's/GroupMembership//'`
+echo $group " : " $groupRecord
