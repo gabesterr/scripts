@@ -24,16 +24,6 @@ fi
 
 ipCalc="/Volumes/ramdisk/g/ipcalc-0.41/ipcalc"
 
-#from http://bashscripts.org/forum/viewtopic.php?f=8&t=1330
-#modified to reflect need to collect from subnets.csv the start IP, mask, dept #, description
-
-#:Read variables from School_Subnets.csv:#
-#"ORACLE_ID","OWNING_UNIT","IP_SUBNET","IP_SUBNET_MASK_BITS","DNS_PRIMARY_IP","DNS_SECONDARY_IP","WINS_PRIMARY_IP","WINS_SECONDARY_IP","VLAN","VLAN_NAME","PRIMARY_DEPARTMENT","SCANNER_ENABLED",
-#subnet_id,IP_SUBNET,ip_subnet_mask_bits,LOC_ROOM_NUM,COMMENT
-#2,10.40.224.0,24,MANAGEMENT,Cluster 1/Region 1,Office
-#distsrv_name,departmentcount,LAST_MODIFY,primary_department,FACILITY_ID
-#IL-ADM01,4,9/25/2012,OHareELN/02021,54042
-
 while read inputline;do
 SegmentID="$(echo $inputline | cut -d, -f1)"
 IPSubNet="$(echo $inputline | cut -d, -f2)"
@@ -133,8 +123,8 @@ echo $SegmentName
 #echo '<?xml version="1.0" encoding="UTF-8" standalone="no"?>'"<network_segment><id>$SegmentID</id><name>$SegmentName</name><starting_address>$startIP</starting_address><ending_address>$endIP</ending_address><distribution_point>$_ADMNAME</distribution_point><url/><netboot_server/><swu_server>$_ADMNAME</swu_server><building/><department/><override_buildings>false</override_buildings><override_departments>false</override_departments></network_segment>" >> subnetsxml/subnets_$SegmentID.xml
 
 #:upload XML file to JSS:#
-#echo "curl -k -v -u 'administrator:!2Trusting4Now!' https://co-ps-jamf-w01.admin.cps.k12.il.us:8443/JSSResource/networksegments/name/$SegmentName -T "subnetsxml/subnets_$SegmentID.xml" -X POST"
-#`curl -k -v -u 'administrator:!2Trusting4Now!' https://co-ps-jamf-w01.admin.cps.k12.il.us:8443/JSSResource/networksegments/name/$SegmentName -T "subnetsxml/subnets_$SegmentID.xml" -X POST`
+#echo "curl -k -v -u 'administrator:pw' https://jss:port/JSSResource/networksegments/name/$SegmentName -T "subnetsxml/subnets_$SegmentID.xml" -X POST"
+#`curl -k -v -u 'administrator:pw' https://jss:port/JSSResource/networksegments/name/$SegmentName -T "subnetsxml/subnets_$SegmentID.xml" -X POST`
 
 fi
 
