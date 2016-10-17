@@ -1,0 +1,144 @@
+#!/bin/bash
+user=$1 
+pass=$2
+validSuperNet=0
+countSuperNet=0
+if [ $# -lt 4 ];
+then
+echo "Usage: $0 <username:$user> <password:$pass> -switch file"
+exit -1
+fi
+
+for i in {1..4}
+do
+case $1 in
+-d) shift; datafile=$1; shift ;;
+-t) shift; datafile="subnetdepartments.csv"; shift;;
+*) url=${url:-$1}; shift;;
+esac
+done
+
+if [ -d subnetsxml ]; then
+	rm -Rf subnetsxml/*
+fi
+
+ipCalc="/Volumes/ramdisk/g/ipcalc-0.41/ipcalc"
+
+#from http://bashscripts.org/forum/viewtopic.php?f=8&t=1330
+#modified to reflect need to collect from subnets.csv the start IP, mask, dept #, description
+
+#:Read variables from School_Subnets.csv:#
+#"ORACLE_ID","OWNING_UNIT","IP_SUBNET","IP_SUBNET_MASK_BITS","DNS_PRIMARY_IP","DNS_SECONDARY_IP","WINS_PRIMARY_IP","WINS_SECONDARY_IP","VLAN","VLAN_NAME","PRIMARY_DEPARTMENT","SCANNER_ENABLED",
+#subnet_id,IP_SUBNET,ip_subnet_mask_bits,LOC_ROOM_NUM,COMMENT
+#2,10.40.224.0,24,MANAGEMENT,Cluster 1/Region 1,Office
+#distsrv_name,departmentcount,LAST_MODIFY,primary_department,FACILITY_ID
+#IL-ADM01,4,9/25/2012,OHareELN/02021,54042
+
+while read inputline;do
+SegmentID="$(echo $inputline | cut -d, -f1)"
+IPSubNet="$(echo $inputline | cut -d, -f2)"
+IPSNMask="$(echo $inputline | cut -d, -f3)"
+ROOM_NUM="$(echo $inputline | cut -d, -f4)"
+_COMMENT="$(echo $inputline | cut -d, -f5)"
+_ADMNAME="$(echo $inputline | cut -d, -f6)"
+DEPT_COUNT="$(echo $inputline | cut -d, -f7)"
+LAST_MODIFY="$(echo $inputline | cut -d, -f8)"
+DEPTPri="$(echo $inputline | cut -d, -f9)"
+FACILITY_ID="$(echo $inputline | cut -d, -f10)"
+#echo 
+
+_DEPTNAME="$(echo $_ADMNAME | sed 's/\-ADM01//')"
+_DEPTNUM="$(echo $DEPTPri | awk -F/ '{print $2}')" 
+#sleep 2
+
+if [ "$IPSNMask" == "20" ] ; then
+		validSuperNet=1
+		#echo "$_ADMNAME = $IPSubNet $IPSNMask is a valid supernet" 
+fi
+
+if [ "$IPSNMask" == "21" ] ; then
+		validSuperNet=1
+		#echo "$_ADMNAME = $IPSubNet $IPSNMask is a valid ADMIN supernet" 
+fi
+
+#if [ $IPSNMask -eq 24 ]; then
+if [ "$IPSNMask" ==  "23" ] ; then
+	if [ "$ROOM_NUM"=="MANAGEMENT" ] ; then
+		if [ "$_COMMENT"=="MANAGEMENT" ] ; then
+			validSuperNet=1
+			IPSNMask=20
+			#echo "$_ADMNAME = $IPSubNet $IPSNMask is a valid supernet" 
+		fi
+	fi
+fi
+
+if [ "$IPSNMask" ==  "23" ] ; then
+	if [ "$ROOM_NUM"=="MANAGEMENT" ] ; then
+		if [ "$_COMMENT"=="MANAGEMENT" ] ; then
+			validSuperNet=1
+			IPSNMask=20
+			#echo "$_ADMNAME = $IPSubNet $IPSNMask is a valid supernet" 
+		fi
+	fi
+fi
+
+if [ "$validSuperNet" -eq "1" ]; then
+	validSuperNet=0
+	countSuperNet=`expr $countSuperNet + 1`
+
+# put together descriptions of network
+if [ "$LAST_MODIFY" == "NULL" ]; then
+	LAST_MODIFY=""
+fi
+
+Romment="$ROOM_NUM $_COMMENT"
+if [ "$_COMMENT" == "$ROOM_NUM" ]; then
+	Romment="$_COMMENT"
+fi
+if [ "$_COMMENT" == "NULL" ]; then 
+	Romment="$ROOM_NUM"
+	if [ "$ROOM_NUM" == "NULL" ]; then 
+		Romment="" 
+	fi
+fi
+
+
+#:Set auto increment ID:#
+#idAdd0=$((idAdd0 +1))
+
+#:removes trailing alpha characters leaving only the IP address:#
+#cutLine0=${line0//[^0-9.]/}
+
+#:Strips trailing octet and appends .1:#
+startIP=`echo $IPSubNet | sed 's/\.[0-9]*$/.1/'`
+
+#:Strips trailing octet and appends 254:#
+#WILL ACTUALLY NEED TO DO MATH HERE TO CALCULATE PROPER RANGES#
+#endIP=`echo $IPSubNet | sed 's/\.[0-9]*$/.254/'`
+endIP=`$ipCalc $IPSubNet $IPSNMask | grep HostMax | awk '{print $2}'`
+#echo $endIP
+
+#SegmentName="$_ADMNAME $DEPTPri $FACILITY_ID $SegmentID $Romment $LAST_MODIFY"
+#SegmentName="$FACILITY_ID $SegmentID  $endIP $_ADMNAME $DEPTPri "
+SegmentName="$FACILITY_ID,$IPSubNet,$IPSNMask,$_ADMNAME,$DEPTPri, "
+
+echo $SegmentName
+#DIST_SERV-<Facility_ID>-<VLAN_Floor/Room|VLAN_COMMENT|VLAN_CODE_A-or-I-OBSOLETED>
+
+#echo $user:$pass $SegmentName $startIP $IPSNMask $endIP
+#$DEPTPri $SegmentID $SegmentName $startIP $endIP $LAST_MODIFY $FACILITY_ID    
+
+#:echos line to txt file as XML:#
+#echo '<?xml version="1.0" encoding="UTF-8" standalone="no"?>'"<network_segment><id>$SegmentID</id><name>$SegmentName</name><starting_address>$startIP</starting_address><ending_address>$endIP</ending_address><distribution_point>$_ADMNAME</distribution_point><url/><netboot_server/><swu_server>$_ADMNAME</swu_server><building>$FACILITY_ID</building><department>$_DEPTNAME-$_DEPTNUM</department><override_buildings>false</override_buildings><override_departments>false</override_departments></network_segment>" >> subnetsxml/subnets_$SegmentID.xml
+#echo '<?xml version="1.0" encoding="UTF-8" standalone="no"?>'"<network_segment><id>$SegmentID</id><name>$SegmentName</name><starting_address>$startIP</starting_address><ending_address>$endIP</ending_address><distribution_point>$_ADMNAME</distribution_point><url/><netboot_server/><swu_server>$_ADMNAME</swu_server><building/><department/><override_buildings>false</override_buildings><override_departments>false</override_departments></network_segment>" >> subnetsxml/subnets_$SegmentID.xml
+
+#:upload XML file to JSS:#
+#echo "curl -k -v -u 'administrator:!2Trusting4Now!' https://co-ps-jamf-w01.admin.cps.k12.il.us:8443/JSSResource/networksegments/name/$SegmentName -T "subnetsxml/subnets_$SegmentID.xml" -X POST"
+#`curl -k -v -u 'administrator:!2Trusting4Now!' https://co-ps-jamf-w01.admin.cps.k12.il.us:8443/JSSResource/networksegments/name/$SegmentName -T "subnetsxml/subnets_$SegmentID.xml" -X POST`
+
+fi
+
+done < $datafile
+
+echo "total supernets $countSuperNet"
+exit 0
