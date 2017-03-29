@@ -71,3 +71,14 @@ echo '<?xml version="1.0" encoding="UTF-8" standalone="no"?>'"<network_segment><
 done < subnetdepartments.csv
 
 exit 0
+
+#better way than while read inputline!!!
+IFS=','
+while read id old new; do
+	curl -k -u 'jpa':'jamf' \
+"https://jss:8443/JSSResource/departments/id/$id" -X PUT \ 
+-H "content-type: application/xml" \
+-d "<department>
+	<name>$new Dept</name>
+    </department>"
+done < /path/to/some/file
